@@ -1,4 +1,4 @@
-
+var elmfk;
 $(document).ready(function() {
 
     $("#filtre_crud").validate({
@@ -12,6 +12,51 @@ $(document).ready(function() {
             }
         }
     })
+
+    $("#con").blur(function() {
+        var param = {};
+        if ($("#con").val().length > 0) {
+            param.con = $("#con").val();
+            get_ajax_data("/crudmaker/asyn_get_base_mysql", param, "populate_base");
+        }
+
+    })
+
+    $("#BASE").change(function() {
+        var param = {};
+        if ($("#BASE").val().length > 0) {
+            param.database = $("#BASE").val();
+            if ($("#con").val().length > 0) {
+                param.con = $("#con").val();
+                get_ajax_data("/crudmaker/asyn_get_table_mysql", param, "populate_table");
+            }
+        }
+
+    })
+
+    $("#basefk").change(function() {
+        var param = {};
+        if ($("#basefk").val().length > 0) {
+            param.database = $("#basefk").val();
+            if ($("#con").val().length > 0) {
+                param.con = $("#con").val();
+                get_ajax_data("/crudmaker/asyn_get_table_mysql", param, "populate_table_fk");
+            }
+        }
+    })
+
+    $("#tablefk").change(function() {
+        var param = {};
+        if ($("#basefk").val().length > 0) {
+            param.database = $("#basefk").val();
+            if ($("#con").val().length > 0) {
+                param.con = $("#con").val();
+                param.table = $("#tablefk").val();
+                get_ajax_data("/crudmaker/asyn_get_table_column_mysql", param, "populate_table_culumn_fk");
+            }
+        }
+    })
+
 
     $("#btn_compiler").click(function() {
         $("<div></div>").dialog({
@@ -38,7 +83,101 @@ $(document).ready(function() {
 
     })
 
+
+    $("#fkmake").dialog({
+        resizable: false,
+        height: 400,
+        width: 375,
+        autoOpen: false,
+        buttons: {
+            "Ok": function() {
+                if ($("#tablefk").val().length > 0 && $("#keyfk").val().length > 0 && $("#libfk").val().length > 0) {
+                    var parfk = "{'base':'" + $("#basefk").val() + "',"
+                    parfk += "'table':'" + $("#tablefk").val() + "',"
+                    parfk += "'key':'" + $("#keyfk").val() + "',"
+                    parfk += "'lib':'" + $("#libfk").val() + "'}"
+
+                    elmfk.val(parfk);
+                    $("#fkmake").dialog("close");
+                }
+            }
+        },
+        close: function(event, ui) {
+            if ($("#tablefk").val().length > 0 && $("#keyfk").val().length > 0 && $("#libfk").val().length > 0) {
+
+            } else {
+                elmfk.parent().find("#fkstate").attr("checked", false);
+            }
+
+            $("#fkmake").dialog("close");
+        },
+        resizable: false,
+                modal: true
+    })
+
+
+    $(".fkstate").livequery(function() {
+        $(this).change(function() {
+            if ($(this).is(":checked")) {
+                $("#forekey").html($(this).parent().find("#itemname").val() + "<=>");
+                elmfk = $(this).parent().find("#fkdata");
+                $("#fkmake").dialog("open");
+            } else {
+                $(this).parent().find("#fkdata").val("");
+            }
+        })
+    })
+
 })
+
+
+function populate_base(data) {
+
+    $("#BASE").html("");
+    $("#basefk").html("");
+
+    $.each(data["database"], function(index, elm) {
+        $("#BASE").append('<option value=' + elm.Database + '>' + elm.Database + '</option>')
+        $("#basefk").append('<option value=' + elm.Database + '>' + elm.Database + '</option>')
+    })
+
+}
+
+function populate_table(data) {
+
+    $("#TABLE").html("");
+
+    $.each(data["table"], function(index, elm) {
+        $("#TABLE").append('<option value=' + elm.table_name + '>' + elm.table_name + '</option>')
+
+    })
+
+}
+
+function populate_table_fk(data) {
+
+
+    $("#tablefk").html("");
+
+    $.each(data["table"], function(index, elm) {
+        $("#tablefk").append('<option value=' + elm.table_name + '>' + elm.table_name + '</option>')
+    })
+
+}
+
+function  populate_table_culumn_fk(data) {
+
+
+    $("#keyfk").html("");
+    $("#libfk").html("");
+
+    $.each(data["column"], function(index, elm) {
+        $("#keyfk").append('<option value=' + elm.Field + '>' + elm.Field + '</option>')
+        $("#libfk").append('<option value=' + elm.Field + '>' + elm.Field + '</option>')
+    })
+
+}
+
 
 function get_shema() {
 
@@ -89,6 +228,8 @@ function get_shema_pupulate(data) {
             html += 'Require<input type="checkbox" id="require" name="require" />&nbsp;&nbsp;'
             html += 'Afficher<input type="checkbox" checked="" id="afficher" name="afficher" />&nbsp;&nbsp;'
             html += 'Modifier<input type="checkbox" checked="" id="modifier" name="modifier" /> '
+            html += 'fk<input type="checkbox" class="fkstate" id="fkstate" name="fkstate" /> '
+            html += '<input type="hidden"  id="fkdata" name="fkdata" /> '
             html += '</span>'
             html += '</div>'
         })
@@ -120,6 +261,7 @@ function compiler(name) {
         item.intername = $(this).parent().find("#intername").val();
         item.champs = [];
         $(this).find(".tbitem").each(function() {
+
             var itemtab = {};
             itemtab.name = $(this).find("#itemname").val();
             itemtab.type = $(this).find("#itemnat").val();
@@ -132,6 +274,13 @@ function compiler(name) {
             itemtab.required = $(this).find("#require").is(":checked");
             itemtab.afficher = $(this).find("#afficher").is(":checked");
             itemtab.modifier = $(this).find("#modifier").is(":checked");
+            if ($(this).find("#fkdata").val().length != 0) {
+                var str = $(this).find("#fkdata").val().replace(/'/g,'"');
+                itemtab.fkparam = JSON.parse(str);
+            } else {
+                itemtab.fkparam = "";
+            }
+
             item.champs.push(itemtab);
         })
         param.data.push(item);

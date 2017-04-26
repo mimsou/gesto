@@ -2,7 +2,6 @@
 
 
 /**
-
 * @version		1.0
 * @package		Gesto
 * @copyright	Copyright (C) 2005 - 2013 Transtu. All rights reserved.

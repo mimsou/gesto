@@ -88,6 +88,74 @@ class crudmaker extends controler {
         }
     }
 
+    public function asyn_get_base_mysql() {
+
+
+        try {
+
+            $params = $this->get_passed_vars("data");
+
+            $con = $params["con"];
+            $con = trim($con);
+            $db = Model::$con();
+
+            $database = $db->query("show databases")->fetchAll();
+
+            echo json_encode(array("etat" => "0", "database" => $database));
+        } catch (Exception $ex) {
+
+            Exceptions::setLastException($ex->getMessage());
+
+            echo json_encode(array("etat" => "2"));
+        }
+    }
+
+    public function asyn_get_table_mysql() {
+
+
+        try {
+
+            $params = $this->get_passed_vars("data");
+
+            $database = $params["database"];
+
+            $con = $params["con"];
+
+            $db = Model::$con();
+
+            $table = $db->query("select table_name from information_schema.tables where table_schema='$database';")->fetchAll();
+
+            echo json_encode(array("etat" => "0", "table" => $table));
+        } catch (Exception $ex) {
+
+            Exceptions::setLastException($ex->getMessage());
+
+            echo json_encode(array("etat" => "2"));
+        }
+    }
+
+    public function asyn_get_table_column_mysql() {
+
+
+        try {
+
+            $params = $this->get_passed_vars("data");
+
+            $con = $params["con"];
+
+            $db = Model::$con();
+
+            $colss = $db->query("DESCRIBE " . $params["database"] . "." . $params["table"])->fetchAll();
+
+            echo json_encode(array("etat" => "0", "column" => $colss));
+        } catch (Exception $ex) {
+
+            Exceptions::setLastException($ex->getMessage());
+
+            echo json_encode(array("etat" => "2"));
+        }
+    }
+
     public function asyn_get_shema_mysql() {
 
         try {
@@ -147,12 +215,26 @@ class crudmaker extends controler {
         $this->phpControl .= "<?php" . "\n";
         $this->phpControl .= "class $this->modname extends controler {" . "\n";
 
-        mkdir($this->tplpath, "0777");
-        mkdir($this->compath, "0777");
+        mkdir($this->tplpath, 0770);
+        chown($this->tplpath, "virtual");
+        chgrp($this->tplpath, 'vsftp');
+        
+        
+        mkdir($this->compath, "0770");
+        
+        
         mkdir($this->tplpath . DS . "lib", "0777");
+        
+        
         mkdir($this->tplpath . DS . "lib" . DS . "js", "0777");
+        
+        
         mkdir($this->tplpath . DS . "lib" . DS . "css", "0777");
+        
+        
         mkdir($this->tplpath . DS . "lib" . DS . "img", "0777");
+        
+        
 
         foreach ($params["data"] as $inter) {
             $this->create_interface($inter);
@@ -464,6 +546,7 @@ class crudmaker extends controler {
 
         $prefix = substr($name, 0, 3);
         $index = $this->get_index($champs);
+          $con = $this->con;
 
         $tpl = '';
         $tpl .= '<div class="col-md-10 col-md-offset-1">' . "\n";
@@ -502,7 +585,20 @@ class crudmaker extends controler {
                     $tpl .='<div class="col-md-3">' . "\n";
                     $tpl .='<div class="input-group input-group-sm">' . "\n";
                     $tpl .='<span class="input-group-addon">' . $descchamp . ': </span>' . "\n";
-                    $tpl .='<input type="text" class="form-control" id="' . $item["name"] . 'R" name="' . $item["name"] . 'R" />' . "\n";
+                    if (!empty($item["fkparam"])) {
+                        $tpl .='<?php' . "\n";
+                        $tpl .='$db = Model::' . $con . '();' . "\n";
+                        $tpl .='$keyfk = $db->select()->from("'.$item["fkparam"]["base"].'.'.$item["fkparam"]["table"].'")->query()->fetchAll();' . "\n";
+                        $tpl .='?>' . "\n";
+                        $tpl .='<select class="form-control impstrong" id="' . $item["name"] . 'R" name="' . $item["name"] . 'R">' . "\n";
+                        $tpl .='<?php foreach ($keyfk as $item ) : ?>' . "\n";
+                        $tpl .='<option value="<?php echo $item["'.$item["fkparam"]["key"].'"] ?>"><?php echo $item["'.$item["fkparam"]["lib"].'"] ?></option>' . "\n";
+                        $tpl .='<?php endforeach; ?>' . "\n";
+                        $tpl .='</select>' . "\n";
+                       
+                    } else {
+                        $tpl .='<input type="text" class="form-control" id="' . $item["name"] . 'R" name="' . $item["name"] . 'R" />' . "\n";
+                    }
                     $tpl .='</div>' . "\n";
                     $tpl .='</div>' . "\n";
                 }
@@ -519,7 +615,20 @@ class crudmaker extends controler {
                     $tpl .='<div class="col-md-3">' . "\n";
                     $tpl .='<div class="input-group input-group-sm">' . "\n";
                     $tpl .='<span class="input-group-addon">' . $descchamp . ': </span>' . "\n";
-                    $tpl .='<input type="text" class="form-control" id="' . $item["name"] . 'R" name="' . $item["name"] . 'R" />' . "\n";
+                      if (!empty($item["fkparam"])) {
+                        $tpl .='<?php' . "\n";
+                        $tpl .='$db = Model::' . $con . '();' . "\n";
+                        $tpl .='$keyfk = $db->select()->from("'.$item["fkparam"]["base"].'.'.$item["fkparam"]["table"].'")->query()->fetchAll();' . "\n";
+                        $tpl .='?>' . "\n";
+                        $tpl .='<select class="form-control impstrong" id="' . $item["name"] . 'R" name="' . $item["name"] . 'R">' . "\n";
+                        $tpl .='<?php foreach ($keyfk as $item ) : ?>' . "\n";
+                        $tpl .='<option value="<?php echo $item["'.$item["fkparam"]["key"].'"] ?>"><?php echo $item["'.$item["fkparam"]["lib"].'"] ?></option>' . "\n";
+                        $tpl .='<?php endforeach; ?>' . "\n";
+                        $tpl .='</select>' . "\n";
+                     
+                    } else {
+                        $tpl .='<input type="text" class="form-control" id="' . $item["name"] . 'R" name="' . $item["name"] . 'R" />' . "\n";
+                    }
                     $tpl .='</div>' . "\n";
                     $tpl .='</div>' . "\n";
                 }
@@ -557,13 +666,13 @@ class crudmaker extends controler {
         $tpl .= '</tr>' . "\n";
         $tpl .= '<tr class="fixedhead">' . "\n";
         if ($this->sgbd == "db2") {
-            
+
             foreach ($champs as $key => $item) {
                 if (!empty($item["desc"])) {
-                $descchamp = $item["desc"];
-            } else {
-                $descchamp = $item["discription"];
-            }
+                    $descchamp = $item["desc"];
+                } else {
+                    $descchamp = $item["discription"];
+                }
                 if ($item["afficher"] == "true") {
                     $tpl .= '<th>' . $descchamp . '</th>' . "\n";
                 }
@@ -617,7 +726,22 @@ class crudmaker extends controler {
                 if ($item["modifier"] == "true") {
                     $tpl .= '<div class="input-group input-group-sm">' . "\n";
                     $tpl .= '<span class="input-group-addon">' . $descchamp . ' : </span>' . "\n";
-                    $tpl .= '<input type="text" class="form-control impstrong" id="' . $item["name"] . '" name="' . $item["name"] . '" >' . "\n";
+                    
+                      if (!empty($item["fkparam"])) {
+                        $tpl .='<?php' . "\n";
+                        $tpl .='$db = Model::' . $con . '();' . "\n";
+                        $tpl .='$keyfk = $db->select()->from("'.$item["fkparam"]["base"].'.'.$item["fkparam"]["table"].'")->query()->fetchAll();' . "\n";
+                        $tpl .='?>' . "\n";
+                        $tpl .='<select class="form-control impstrong" id="' . $item["name"] . 'R" name="' . $item["name"] . 'R">' . "\n";
+                        $tpl .='<?php foreach ($keyfk as $item ) : ?>' . "\n";
+                        $tpl .='<option value="<?php echo $item["'.$item["fkparam"]["key"].'"] ?>"><?php echo $item["'.$item["fkparam"]["lib"].'"] ?></option>' . "\n";
+                        $tpl .='<?php endforeach; ?>' . "\n";
+                        $tpl .='</select>' . "\n";
+                      
+                    } else {
+                        $tpl .='<input type="text" class="form-control" id="' . $item["name"] . '" name="' . $item["name"] . '" />' . "\n";
+                    }
+               
                     $tpl .= '</div>' . "\n";
                     $tpl .= '<br/>' . "\n";
                 }
@@ -640,7 +764,23 @@ class crudmaker extends controler {
                 if ($item["modifier"] == "true") {
                     $tpl .= '<div class="input-group input-group-sm">' . "\n";
                     $tpl .= '<span class="input-group-addon">' . $descchamp . ' : </span>' . "\n";
-                    $tpl .= '<input type="text" class="form-control impstrong" id="' . $item["name"] . '" name="' . $item["name"] . '" >' . "\n";
+                   
+                    
+                    if (!empty($item["fkparam"])) {
+                        $tpl .='<?php' . "\n";
+                        $tpl .='$db = Model::' . $con . '();' . "\n";
+                        $tpl .='$keyfk = $db->select()->from("'.$item["fkparam"]["base"].'.'.$item["fkparam"]["table"].'")->query()->fetchAll();' . "\n";
+                        $tpl .='?>' . "\n";
+                        $tpl .='<select class="form-control impstrong" id="' . $item["name"] . 'R" name="' . $item["name"] . 'R">' . "\n";
+                        $tpl .='<?php foreach ($keyfk as $item ) : ?>' . "\n";
+                        $tpl .='<option value="<?php echo $item["'.$item["fkparam"]["key"].'"] ?>"><?php echo $item["'.$item["fkparam"]["lib"].'"] ?></option>' . "\n";
+                        $tpl .='<?php endforeach; ?>' . "\n";
+                        $tpl .='</select>' . "\n";
+                      
+                    } else {
+                        $tpl .='<input type="text" class="form-control" id="' . $item["name"] . '" name="' . $item["name"] . '" />' . "\n";
+                    }
+                    
                     $tpl .= '</div>' . "\n";
                     $tpl .= '<br/>' . "\n";
                 }
@@ -694,6 +834,7 @@ class crudmaker extends controler {
         $phpc .= '$db = Model::' . $con . '();' . "\n";
 
         foreach ($champs as $item) {
+            
             if ($item["ai"] == "true") {
                 $phpc .= '$' . $item["name"] . "= " . '$db' . "->query('SELECT case when MAX(" . $item["name"] . ")+1 is null then 1 else MAX(" . $item["name"] . ")+1 end as " . $item["name"] . " from $base.$table')->fetchAll();" . "\n";
             }
@@ -840,5 +981,4 @@ class crudmaker extends controler {
     }
 
 }
-
 ?>
