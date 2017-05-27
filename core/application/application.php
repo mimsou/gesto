@@ -9,14 +9,56 @@ class mainframe {
 
         require PATH_ROOT . DS . 'core/application/config.php';
         config::init();
+        Model::init_doctrine();
         //Model::addConnections();
-        
     }
 
     public function render() {
 
         Exceptions::init();
         View::init();
+
+        set_error_handler(function($errno, $errstr, $errfile, $errline) {
+            
+            if (!(error_reporting() & $errno)) {
+                // Ce code d'erreur n'est pas inclus dans error_reporting()
+                return;
+            }
+            
+            if (Zend_Auth::getInstance()->getIdentity()->IDUTIL == 1) {
+                ;
+                switch ($errno) {
+                    case E_USER_ERROR:
+                        $msgerror = "<b>Mon ERREUR</b> [$errno] $errstr<br />\n";
+                        $msgerror .= "  Erreur fatale sur la ligne $errline dans le fichier $errfile";
+                        $msgerror .= ", PHP " . PHP_VERSION . " (" . PHP_OS . ")<br />\n";
+                        $msgerror .= "Arrêt...<br />\n";
+
+                        break;
+
+                    case E_USER_WARNING:
+                        $msgerror = "<b>Mon ALERTE</b> [$errno] $errstr<br />\n";
+                        break;
+
+                    case E_USER_NOTICE:
+                        $msgerror = "<b>Mon AVERTISSEMENT</b> [$errno] $errstr<br />\n";
+                        break;
+
+                    default:
+                        $msgerror = "Type d'erreur inconnu : [$errno] $errstr<br />\n";
+                        break;
+                }
+
+                Exceptions::setLastException($msgerror);
+                echo json_encode(array("etat" => "2"));
+            } else {
+                Exceptions::setLastException("Erreur system Merci de contacté un administrateur");
+                echo json_encode(array("etat" => "2"));
+            }
+
+            return true;
+            
+        });
 
         // recupérer les variable de l'url
         $param = controler::get_params();
